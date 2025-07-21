@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Página Simples</title>
+    <!-- Adicionando um pouco de estilo para ficar mais agradável -->
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f2f5;
+            margin: 0;
+            text-align: center;
+        }
+        .container {
+            padding: 40px;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        p {
+            color: #666;
+            font-size: 18px;
+            min-height: 25px; /* Garante que o layout não "pule" */
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Interação com JavaScript!</h1>
+        <!-- Este parágrafo terá seu texto alterado pelo JavaScript -->
+        <p id="mensagem"></p>
+        <!-- Este botão irá acionar a função JavaScript -->
+        <button onclick="mostrarMensagem()">Clique em Mim!</button>
+    </div>
+
+    <!-- Aqui começa a mágica do JavaScript -->
+    <script>
+        // Esta função é chamada quando o botão é clicado
+        function mostrarMensagem() {
+            // Pega o elemento parágrafo pelo seu ID "mensagem"
+            const paragrafo = document.getElementById('mensagem');
+            
+            // Altera o conteúdo de texto do parágrafo
+            paragrafo.textContent = 'Olá! Você acabou de usar JavaScript!';
+        }
+    </script>
+
+</body>
+</html>
