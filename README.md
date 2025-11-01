@@ -21,8 +21,10 @@ npm start
 Quando quiser reduzir ao máximo o uso de recursos, execute:
 
 ```bash
-npm start -- --headless
+npm run start:headless
 ```
+
+Se preferir, você também pode executar `npm start -- --headless`.
 
 Nesse modo a janela principal fica oculta, o Chromium roda sem interface visível e o áudio é silenciado. As sessões continuam funcionando em segundo plano com as mesmas partitions persistentes — perfeito para manter várias contas logadas consumindo o mínimo possível.
 

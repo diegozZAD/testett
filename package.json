@@ -4,7 +4,8 @@
   "description": "Electron app for managing multiple isolated YouTube sessions.",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "start:headless": "electron . --headless"
   },
   "dependencies": {
     "uuid": "^9.0.1"

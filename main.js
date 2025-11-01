@@ -78,9 +78,27 @@ function createMainWindow() {
       nodeIntegration: false,
       backgroundThrottling: false
     },
-    show: !isHeadless,
+    show: false,
     backgroundColor: '#0b0d11'
   });
+
+  if (isHeadless) {
+    mainWindow.setSkipTaskbar(true);
+    mainWindow.hide();
+    try {
+      if (process.platform === 'darwin' && app.dock) {
+        app.dock.hide();
+      }
+    } catch (error) {
+      console.warn('Failed to hide dock in headless mode:', error);
+    }
+  } else {
+    mainWindow.once('ready-to-show', () => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.show();
+      }
+    });
+  }
 
   console.log('[Self-Test] 1) Criar aba A (partition A), abrir YouTube, logar; fechar app; reabrir app → sessão A mantida.');
   console.log('[Self-Test] 2) Criar aba B (partition B), abrir outro link do YouTube, logar com outra conta → sessão separada da A.');
@@ -112,7 +130,11 @@ function createMainWindow() {
 
 function adjustViewBounds(view) {
   if (!mainWindow) return;
-  const [width, height] = mainWindow.getContentSize();
+  let [width, height] = mainWindow.getContentSize();
+  if (isHeadless && (width === 0 || height === 0)) {
+    width = 1280;
+    height = 720;
+  }
   view.setBounds({
     x: SIDEBAR_WIDTH,
     y: TOPBAR_HEIGHT + CONTROL_PANEL_HEIGHT,
