@@ -16,12 +16,28 @@ npm start
 
 > Dica: para desabilitar a aceleração de hardware utilize `npm start -- --disable-gpu`. O código já possui o trecho comentado chamando `app.disableHardwareAcceleration()` antes do `app.whenReady()` para evitar o erro clássico.
 
+### Rodando em modo headless
+
+Quando quiser reduzir ao máximo o uso de recursos, execute:
+
+```bash
+npm start -- --headless
+```
+
+Nesse modo a janela principal fica oculta, o Chromium roda sem interface visível e o áudio é silenciado. As sessões continuam funcionando em segundo plano com as mesmas partitions persistentes — perfeito para manter várias contas logadas consumindo o mínimo possível.
+
 ## Como funciona
 
-- Cada aba utiliza uma `BrowserView` com uma partition exclusiva (`session.fromPartition('persist:perfil_<UUID>')`), garantindo isolamento de cookies, logins e storage.
+- Cada aba utiliza uma `BrowserView` com uma partition exclusiva (`session.fromPartition('persist:perfil_<UUID>')`), garantindo isolamento de cookies, logins e storage — o comportamento é equivalente a várias janelas anônimas, porém com os logins do Google preservados em disco para reutilização.
 - As informações das abas são persistidas em `profiles.json` dentro da pasta `userData` do Electron (`%APPDATA%` no Windows, `~/Library/Application Support` no macOS, `~/.config` no Linux). O arquivo incluído na raiz do projeto é apenas um template vazio.
 - Ao iniciar, o app recria as abas registradas em `profiles.json` (sem navegar automaticamente caso `lastUrl` esteja vazio).
 - Alterações como navegação, renomear, limpar sessão ou trocar User-Agent são salvas imediatamente.
+
+### Privacidade e isolamento
+
+- Cada partition recebe uma configuração endurecida (`setPermissionRequestHandler`) bloqueando permissões invasivas (notificações, geolocalização, captura de mídia), mantendo o ambiente mais “anônimo”.
+- O corretor ortográfico é desabilitado e capturas de tela/aplicações externas são negadas para reduzir vazamento de dados.
+- Áudio é silenciado automaticamente quando o modo headless está ativo, evitando ruídos ao executar várias sessões em segundo plano.
 
 ## Interface
 

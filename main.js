@@ -3,6 +3,15 @@ const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 
+const isHeadless = process.argv.includes('--headless');
+
+if (isHeadless) {
+  app.commandLine.appendSwitch('headless');
+  app.commandLine.appendSwitch('disable-gpu');
+  app.commandLine.appendSwitch('mute-audio');
+  app.commandLine.appendSwitch('enable-precise-memory-info');
+}
+
 // Uncomment the block below to disable hardware acceleration before the app is ready.
 // if (process.argv.includes('--disable-gpu')) {
 //   app.disableHardwareAcceleration();
@@ -18,6 +27,7 @@ let profilesFilePath;
 let mainWindow;
 let activeTabId = null;
 const tabs = new Map(); // id -> { profile, view }
+const hardenedPartitions = new Set();
 
 const defaultUrl = 'https://www.youtube.com';
 
@@ -65,8 +75,11 @@ function createMainWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false
-    }
+      nodeIntegration: false,
+      backgroundThrottling: false
+    },
+    show: !isHeadless,
+    backgroundColor: '#0b0d11'
   });
 
   console.log('[Self-Test] 1) Criar aba A (partition A), abrir YouTube, logar; fechar app; reabrir app → sessão A mantida.');
@@ -76,6 +89,10 @@ function createMainWindow() {
   console.log('[Self-Test] 5) Redimensionar janela mantém o BrowserView ajustado.');
 
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+
+  mainWindow.webContents.once('did-finish-load', () => {
+    mainWindow.webContents.send('runtime-options', { headless: isHeadless });
+  });
 
   mainWindow.on('resize', () => {
     if (activeTabId && tabs.has(activeTabId)) {
@@ -105,17 +122,51 @@ function adjustViewBounds(view) {
   view.setAutoResize({ width: true, height: true });
 }
 
+function ensurePartitionHardened(partitionName) {
+  if (hardenedPartitions.has(partitionName)) {
+    return;
+  }
+
+  const targetSession = session.fromPartition(partitionName);
+  targetSession.setSpellCheckerEnabled(false);
+  targetSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    if (['notifications', 'midi', 'midiSysex', 'geolocation', 'media'].includes(permission)) {
+      callback(false);
+      return;
+    }
+    callback(true);
+  });
+
+  if (typeof targetSession.setDisplayMediaRequestHandler === 'function') {
+    targetSession.setDisplayMediaRequestHandler((_wc, _options, callback) => {
+      callback({ video: false, audio: false });
+    });
+  }
+
+  hardenedPartitions.add(partitionName);
+}
+
 function createBrowserView(profile) {
+  ensurePartitionHardened(profile.partition);
+
   const view = new BrowserView({
     webPreferences: {
       partition: profile.partition,
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      sandbox: true,
+      backgroundThrottling: false,
+      webSecurity: true,
+      offscreen: isHeadless
     }
   });
 
   if (profile.userAgent && profile.userAgent.trim()) {
     view.webContents.setUserAgent(profile.userAgent.trim());
+  }
+
+  if (isHeadless) {
+    view.webContents.setAudioMuted(true);
   }
 
   view.webContents.setWindowOpenHandler(({ url }) => {
@@ -365,6 +416,10 @@ ipcMain.handle('set-profile-user-agent', async (event, { id, userAgent }) => {
     }
   }
   return getProfiles();
+});
+
+ipcMain.handle('get-runtime-options', async () => {
+  return { headless: isHeadless };
 });
 
 ipcMain.handle('show-tab-context-menu', async (event, id) => {

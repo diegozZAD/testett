@@ -18,6 +18,7 @@ const userAgentInput = document.getElementById('userAgentInput');
 const saveUserAgentBtn = document.getElementById('saveUserAgentBtn');
 const clearSessionBtn = document.getElementById('clearSessionBtn');
 const closeTabBtn = document.getElementById('closeTabBtn');
+const headlessNotice = document.getElementById('headlessNotice');
 
 const statusMessages = [];
 
@@ -95,6 +96,15 @@ function renderAll() {
   renderControls();
 }
 
+function updateHeadlessNotice(isHeadless) {
+  if (!headlessNotice) return;
+  if (isHeadless) {
+    headlessNotice.classList.remove('hidden');
+  } else {
+    headlessNotice.classList.add('hidden');
+  }
+}
+
 async function setActiveTab(id, { notifyMain = true } = {}) {
   state.activeId = id;
   if (notifyMain && id) {
@@ -104,6 +114,16 @@ async function setActiveTab(id, { notifyMain = true } = {}) {
 }
 
 async function bootstrap() {
+  try {
+    const runtime = await window.electronAPI.getRuntimeOptions();
+    updateHeadlessNotice(runtime?.headless);
+    if (runtime?.headless) {
+      pushStatus('Executando em modo headless. O Chromium está sem interface visível.', 'warning');
+    }
+  } catch (error) {
+    console.error('Failed to load runtime options', error);
+  }
+
   const profiles = await window.electronAPI.getProfiles();
   state.profiles = profiles;
   if (profiles.length) {
@@ -184,6 +204,10 @@ window.electronAPI.onSessionCleared((id) => {
   if (id === state.activeId) {
     pushStatus('Sessão limpa com sucesso.', 'warning');
   }
+});
+
+window.electronAPI.onRuntimeOptions((options) => {
+  updateHeadlessNotice(options?.headless);
 });
 
 bootstrap();
