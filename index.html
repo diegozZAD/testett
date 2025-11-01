@@ -1,71 +1,160 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Página Simples</title>
-    <!-- Adicionando um pouco de estilo para ficar mais agradável -->
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Controle de Modo Headless</title>
     <style>
-        body {
-            font-family: sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #f0f2f5;
-            margin: 0;
-            text-align: center;
-        }
-        .container {
-            padding: 40px;
-            background-color: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-        h1 {
-            color: #333;
-        }
-        p {
-            color: #666;
-            font-size: 18px;
-            min-height: 25px; /* Garante que o layout não "pule" */
-        }
-        button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
+      :root {
+        color-scheme: dark light;
+      }
+
+      body {
+        margin: 0;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: #111827;
+        color: #f9fafb;
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+      }
+
+      header {
+        padding: 32px 24px 16px;
+        background: linear-gradient(135deg, #2563eb, #1e3a8a);
+        box-shadow: 0 4px 20px rgba(15, 23, 42, 0.3);
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 28px;
+      }
+
+      p {
+        margin: 0;
+        font-size: 16px;
+        opacity: 0.85;
+      }
+
+      main {
+        flex: 1;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+
+      .status-card {
+        padding: 24px;
+        border-radius: 16px;
+        background: rgba(30, 64, 175, 0.35);
+        border: 1px solid rgba(147, 197, 253, 0.35);
+        backdrop-filter: blur(6px);
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.45);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+      }
+
+      .status-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 14px 36px rgba(15, 23, 42, 0.6);
+      }
+
+      .status-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        opacity: 0.9;
+      }
+
+      .status-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 999px;
+        background: #22c55e;
+        box-shadow: 0 0 16px rgba(34, 197, 94, 0.55);
+        transition: background 0.3s ease, box-shadow 0.3s ease;
+      }
+
+      body.headless .status-indicator {
+        background: #f97316;
+        box-shadow: 0 0 18px rgba(249, 115, 22, 0.65);
+      }
+
+      #status {
+        margin-top: 16px;
+        font-size: 20px;
+        font-weight: 500;
+      }
+
+      .log-card {
+        padding: 20px;
+        border-radius: 14px;
+        background: rgba(15, 23, 42, 0.55);
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      }
+
+      .log-card h2 {
+        margin-top: 0;
+        font-size: 18px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        opacity: 0.8;
+      }
+
+      #log {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 8px;
+        font-size: 15px;
+        opacity: 0.9;
+      }
+
+      #log li {
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: rgba(30, 41, 59, 0.7);
+        border: 1px solid rgba(148, 163, 184, 0.2);
+      }
+
+      footer {
+        padding: 16px 24px;
+        font-size: 14px;
+        opacity: 0.65;
+        text-align: center;
+        background: rgba(15, 23, 42, 0.75);
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
+    <header>
+      <h1>Controle visual do modo headless</h1>
+      <p>
+        Utilize o menu <strong>Modo</strong> &rarr; <strong>Ativar/Desativar Modo Headless</strong>
+        para alternar sem usar o terminal.
+      </p>
+    </header>
+    <main>
+      <section class="status-card">
+        <div class="status-label">
+          <span class="status-indicator" aria-hidden="true"></span>
+          Estado atual
+        </div>
+        <div id="status">Carregando estado...</div>
+      </section>
 
-    <div class="container">
-        <h1>Interação com JavaScript!</h1>
-        <!-- Este parágrafo terá seu texto alterado pelo JavaScript -->
-        <p id="mensagem"></p>
-        <!-- Este botão irá acionar a função JavaScript -->
-        <button onclick="mostrarMensagem()">Clique em Mim!</button>
-    </div>
-
-    <!-- Aqui começa a mágica do JavaScript -->
-    <script>
-        // Esta função é chamada quando o botão é clicado
-        function mostrarMensagem() {
-            // Pega o elemento parágrafo pelo seu ID "mensagem"
-            const paragrafo = document.getElementById('mensagem');
-            
-            // Altera o conteúdo de texto do parágrafo
-            paragrafo.textContent = 'Olá! Você acabou de usar JavaScript!';
-        }
-    </script>
-
-</body>
+      <section class="log-card">
+        <h2>Logs visuais</h2>
+        <ul id="log"></ul>
+      </section>
+    </main>
+    <footer>
+      Os BrowserViews continuam ativos em background mesmo quando esta janela está oculta.
+    </footer>
+  </body>
 </html>

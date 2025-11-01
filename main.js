@@ -1,106 +1,54 @@
-const { app, BrowserWindow, BrowserView, ipcMain, Menu, dialog, session, shell } = require('electron');
+const { app, BrowserWindow, BrowserView, Menu } = require('electron');
 const path = require('path');
-const fs = require('fs');
-const { v4: uuidv4 } = require('uuid');
 
-const headlessFlag = process.argv.includes('--headless');
-const headlessEnv = ['ELECTRON_HEADLESS', 'HEADLESS'].some((key) => {
-  const value = process.env[key];
-  return value === '1' || value === 'true';
-});
-const isHeadless = headlessFlag || headlessEnv;
-
-if (isHeadless) {
-  app.commandLine.appendSwitch('headless');
-  app.commandLine.appendSwitch('disable-gpu');
-  app.commandLine.appendSwitch('mute-audio');
-  app.commandLine.appendSwitch('enable-precise-memory-info');
-  console.log('[Headless] Headless mode ativado. Nenhuma janela visível será aberta.');
-}
-
-// Uncomment the block below to disable hardware acceleration before the app is ready.
-// if (process.argv.includes('--disable-gpu')) {
-//   app.disableHardwareAcceleration();
-// }
-
-const SIDEBAR_WIDTH = 260;
-const TOPBAR_HEIGHT = 56;
-const CONTROL_PANEL_HEIGHT = 220;
-
-const PROFILES_FILENAME = 'profiles.json';
-let profilesFilePath;
+const HEADLESS_FLAG = '--headless';
+const isHeadless = process.argv.includes(HEADLESS_FLAG);
 
 let mainWindow;
-let activeTabId = null;
-const tabs = new Map(); // id -> { profile, view }
-const hardenedPartitions = new Set();
+let browserView;
 
-const defaultUrl = 'https://www.youtube.com';
-
-function ensureProfilesFile() {
-  if (!profilesFilePath) {
-    profilesFilePath = path.join(app.getPath('userData'), PROFILES_FILENAME);
-  }
-
-  try {
-    if (!fs.existsSync(profilesFilePath)) {
-      fs.writeFileSync(profilesFilePath, JSON.stringify([], null, 2), 'utf-8');
-    }
-    const raw = fs.readFileSync(profilesFilePath, 'utf-8');
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
-      return parsed;
-    }
-    return [];
-  } catch (error) {
-    console.error('Failed to read profiles file:', error);
-    return [];
+function logModeStatus() {
+  if (isHeadless) {
+    console.log('[Headless] Modo headless ATIVADO: a janela principal permanecerá oculta, mas os BrowserViews continuam em execução.');
+  } else {
+    console.log('[Headless] Modo headless DESATIVADO: a interface será exibida normalmente.');
   }
 }
 
-function persistProfiles(profiles) {
-  if (!profilesFilePath) {
-    profilesFilePath = path.join(app.getPath('userData'), PROFILES_FILENAME);
-  }
-  try {
-    fs.writeFileSync(profilesFilePath, JSON.stringify(profiles, null, 2), 'utf-8');
-  } catch (error) {
-    console.error('Failed to write profiles file:', error);
-  }
-}
+function createWindow() {
+  logModeStatus();
 
-function getProfiles() {
-  return ensureProfilesFile();
-}
-
-function createMainWindow() {
-  const windowOptions = {
-    width: isHeadless ? 1280 : 1400,
-    height: isHeadless ? 720 : 900,
-    useContentSize: true,
-    title: 'YouTube Multi-Session',
+  mainWindow = new BrowserWindow({
+    width: 1200,
+    height: 800,
     show: !isHeadless,
     frame: !isHeadless,
-    focusable: !isHeadless,
     skipTaskbar: isHeadless,
-    resizable: !isHeadless,
-    transparent: isHeadless,
-    backgroundColor: isHeadless ? '#00000000' : '#0b0d11',
-    autoHideMenuBar: true,
+    backgroundColor: '#1f1f1f',
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      backgroundThrottling: false
+      nodeIntegration: true,
+      contextIsolation: false
     }
-  };
+  });
 
-  if (isHeadless) {
-    windowOptions.x = -10000;
-    windowOptions.y = -10000;
-  }
+  mainWindow.loadFile(path.join(__dirname, 'index.html'));
 
-  mainWindow = new BrowserWindow(windowOptions);
+  mainWindow.webContents.once('did-finish-load', () => {
+    mainWindow.webContents.executeJavaScript(
+      `document.body.classList.toggle('headless', ${isHeadless});
+       const status = document.getElementById('status');
+       if (status) {
+         status.textContent = ${isHeadless ? "'Modo headless está ATIVADO.'" : "'Modo headless está DESATIVADO.'"};
+       }
+       const log = document.getElementById('log');
+       if (log) {
+         const item = document.createElement('li');
+         item.textContent = ${isHeadless ? "'Headless ativo: reiniciado com --headless.'" : "'Headless desativado: reiniciado sem --headless.'"};
+         log.appendChild(item);
+       }
+      `
+    );
+  });
 
   if (!isHeadless) {
     mainWindow.once('ready-to-show', () => {
@@ -108,275 +56,91 @@ function createMainWindow() {
         mainWindow.show();
       }
     });
-  } else {
-    try {
-      if (process.platform === 'darwin' && app.dock) {
-        app.dock.hide();
-      }
-    } catch (error) {
-      console.warn('Failed to hide dock in headless mode:', error);
-    }
   }
 
-  console.log('[Self-Test] 1) Criar aba A (partition A), abrir YouTube, logar; fechar app; reabrir app → sessão A mantida.');
-  console.log('[Self-Test] 2) Criar aba B (partition B), abrir outro link do YouTube, logar com outra conta → sessão separada da A.');
-  console.log('[Self-Test] 3) “Apagar Sessão desta Aba” limpa apenas a B (A fica intacta).');
-  console.log('[Self-Test] 4) Fechar aba não apaga sessão; apenas removê-la do profiles.json quando eu confirmar.');
-  console.log('[Self-Test] 5) Redimensionar janela mantém o BrowserView ajustado.');
+  setupBrowserView();
 
-  if (!isHeadless) {
-    mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
-
-    mainWindow.webContents.once('did-finish-load', () => {
-      mainWindow.webContents.send('runtime-options', { headless: isHeadless });
-    });
-
-    mainWindow.on('resize', () => {
-      if (activeTabId && tabs.has(activeTabId)) {
-        const { view } = tabs.get(activeTabId);
-        adjustViewBounds(view);
-      }
-    });
-  }
-
+  mainWindow.on('resize', updateBrowserViewBounds);
   mainWindow.on('closed', () => {
-    tabs.forEach(({ view }) => {
-      view.webContents.removeAllListeners();
-    });
-    tabs.clear();
+    browserView = null;
     mainWindow = null;
   });
 }
 
-function notifyRenderer(channel, payload) {
-  if (!isHeadless && mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send(channel, payload);
-  }
-}
-
-function adjustViewBounds(view) {
-  if (!mainWindow) return;
-  let [width, height] = mainWindow.getContentSize();
-  if (isHeadless && (width === 0 || height === 0)) {
-    width = 1280;
-    height = 720;
-  }
-  const offsetX = isHeadless ? 0 : SIDEBAR_WIDTH;
-  const offsetY = isHeadless ? 0 : TOPBAR_HEIGHT + CONTROL_PANEL_HEIGHT;
-  view.setBounds({
-    x: offsetX,
-    y: offsetY,
-    width: Math.max(width - offsetX, 0),
-    height: Math.max(height - offsetY, 0)
-  });
-  view.setAutoResize({ width: true, height: true });
-}
-
-function ensurePartitionHardened(partitionName) {
-  if (hardenedPartitions.has(partitionName)) {
-    return;
-  }
-
-  const targetSession = session.fromPartition(partitionName);
-  targetSession.setSpellCheckerEnabled(false);
-  targetSession.setPermissionRequestHandler((webContents, permission, callback) => {
-    if (['notifications', 'midi', 'midiSysex', 'geolocation', 'media'].includes(permission)) {
-      callback(false);
-      return;
-    }
-    callback(true);
-  });
-
-  if (typeof targetSession.setDisplayMediaRequestHandler === 'function') {
-    targetSession.setDisplayMediaRequestHandler((_wc, _options, callback) => {
-      callback({ video: false, audio: false });
-    });
-  }
-
-  hardenedPartitions.add(partitionName);
-}
-
-function createBrowserView(profile) {
-  ensurePartitionHardened(profile.partition);
-
-  const view = new BrowserView({
+function setupBrowserView() {
+  browserView = new BrowserView({
     webPreferences: {
-      partition: profile.partition,
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-      backgroundThrottling: false,
-      webSecurity: true,
-      offscreen: isHeadless
+      partition: 'persist:demo-profile'
     }
   });
 
-  if (profile.userAgent && profile.userAgent.trim()) {
-    view.webContents.setUserAgent(profile.userAgent.trim());
-  }
-
-  if (isHeadless) {
-    view.webContents.setAudioMuted(true);
-  }
-
-  view.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
-    return { action: 'deny' };
-  });
-
-  const handleNavigation = (event, url) => {
-    updateProfile(profile.id, { lastUrl: url });
-  };
-
-  view.webContents.on('did-navigate', handleNavigation);
-  view.webContents.on('did-navigate-in-page', handleNavigation);
-
-  view.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
-    notifyRenderer('tab-error', {
-      id: profile.id,
-      message: `Falha ao carregar ${validatedURL || 'página'}: ${errorDescription} (${errorCode})`
-    });
-  });
-
-  if (profile.lastUrl) {
-    view.webContents.loadURL(profile.lastUrl).catch((error) => {
-      console.error('Failed to load last URL for profile', profile.id, error);
-    });
-  }
-
-  return view;
+  mainWindow.setBrowserView(browserView);
+  updateBrowserViewBounds();
+  browserView.webContents.loadURL('https://www.youtube.com');
 }
 
-function attachView(tabId) {
-  if (!mainWindow) return;
-  const tabData = tabs.get(tabId);
-  if (!tabData) return;
-
-  const { view } = tabData;
-
-  if (mainWindow.getBrowserView() === view) {
-    adjustViewBounds(view);
+function updateBrowserViewBounds() {
+  if (!mainWindow || !browserView) {
     return;
   }
 
-  if (mainWindow.getBrowserView()) {
-    mainWindow.setBrowserView(null);
-  }
+  const { width, height } = mainWindow.getContentBounds();
+  const headerHeight = 140;
 
-  mainWindow.setBrowserView(view);
-  adjustViewBounds(view);
-  activeTabId = tabId;
-}
-
-function detachActiveView() {
-  if (!mainWindow) return;
-  const currentView = mainWindow.getBrowserView();
-  if (currentView) {
-    mainWindow.setBrowserView(null);
-  }
-  activeTabId = null;
-}
-
-function updateProfile(id, updates) {
-  const profiles = getProfiles();
-  const index = profiles.findIndex((profile) => profile.id === id);
-  if (index === -1) return;
-  const updatedProfile = { ...profiles[index], ...updates };
-  profiles[index] = updatedProfile;
-  persistProfiles(profiles);
-
-  if (tabs.has(id)) {
-    tabs.get(id).profile = updatedProfile;
-  }
-
-  notifyRenderer('profiles-updated', profiles);
-}
-
-function createProfile(name, url) {
-  const profiles = getProfiles();
-  const id = `perfil_${uuidv4()}`;
-  const partition = `persist:${id}`; // Persist partition keeps cookies/localStorage isolated per tab.
-  const profile = {
-    id,
-    name: name || 'Nova Aba',
-    partition,
-    lastUrl: '',
-    userAgent: ''
-  };
-  profiles.push(profile);
-  persistProfiles(profiles);
-  const view = createBrowserView(profile);
-  tabs.set(id, { profile, view });
-
-  if (url) {
-    view.webContents.loadURL(url).catch((error) => {
-      console.error('Failed to load initial URL for profile', id, error);
-    });
-    updateProfile(id, { lastUrl: url });
-  }
-
-  attachView(id);
-  notifyRenderer('profiles-updated', profiles);
-  return profile;
-}
-
-function removeProfile(id) {
-  const profiles = getProfiles();
-  const filtered = profiles.filter((profile) => profile.id !== id);
-  persistProfiles(filtered);
-  if (tabs.has(id)) {
-    const { view } = tabs.get(id);
-    if (mainWindow && mainWindow.getBrowserView() === view) {
-      detachActiveView();
-    }
-    view.webContents.removeAllListeners();
-    view.destroy(); // BrowserView destruído, mas os dados do partition continuam no disco.
-    tabs.delete(id);
-  }
-  notifyRenderer('profiles-updated', filtered);
-  if (!activeTabId && filtered.length > 0) {
-    attachView(filtered[0].id);
-  }
-}
-
-function clearProfileSession(id) {
-  const profile = getProfiles().find((p) => p.id === id);
-  if (!profile) return;
-  const targetSession = session.fromPartition(profile.partition);
-  return targetSession.clearStorageData({}).then(() => {
-    targetSession.clearCache().catch(() => {});
-    updateProfile(id, { lastUrl: '' });
+  browserView.setBounds({
+    x: 0,
+    y: headerHeight,
+    width,
+    height: Math.max(height - headerHeight, 0)
   });
+  browserView.setAutoResize({ width: true, height: true });
 }
 
-async function ensureTab(id) {
-  if (!tabs.has(id)) {
-    const profile = getProfiles().find((p) => p.id === id);
-    if (!profile) return null;
-    const view = createBrowserView(profile);
-    tabs.set(id, { profile, view });
+function toggleHeadless(enable) {
+  const args = process.argv.slice(1).filter((arg) => arg !== HEADLESS_FLAG);
+  if (enable) {
+    args.push(HEADLESS_FLAG);
   }
-  return tabs.get(id);
+
+  const message = enable
+    ? '[Headless] Recarregando aplicativo em modo headless.'
+    : '[Headless] Recarregando aplicativo em modo com interface.';
+  console.log(message);
+
+  app.relaunch({ args });
+  app.exit(0);
+}
+
+function buildMenu() {
+  const template = [
+    {
+      label: 'Modo',
+      submenu: [
+        {
+          label: 'Ativar Modo Headless',
+          enabled: !isHeadless,
+          click: () => toggleHeadless(true)
+        },
+        {
+          label: 'Desativar Modo Headless',
+          enabled: isHeadless,
+          click: () => toggleHeadless(false)
+        }
+      ]
+    }
+  ];
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
 }
 
 app.whenReady().then(() => {
-  profilesFilePath = path.join(app.getPath('userData'), PROFILES_FILENAME);
-  const profiles = getProfiles();
-
-  createMainWindow();
-
-  profiles.forEach((profile) => {
-    const view = createBrowserView(profile);
-    tabs.set(profile.id, { profile, view });
-  });
-
-  if (profiles.length > 0) {
-    attachView(profiles[0].id);
-  }
+  buildMenu();
+  createWindow();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      createMainWindow();
+      createWindow();
     }
   });
 });
@@ -385,101 +149,4 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
-});
-
-ipcMain.handle('get-profiles', async () => {
-  return getProfiles();
-});
-
-ipcMain.handle('create-profile', async (event, { name, url }) => {
-  return createProfile(name, url || defaultUrl);
-});
-
-ipcMain.handle('rename-profile', async (event, { id, name }) => {
-  updateProfile(id, { name });
-  return getProfiles();
-});
-
-ipcMain.handle('activate-profile', async (event, id) => {
-  const tab = await ensureTab(id);
-  if (!tab) return null;
-  attachView(id);
-  return id;
-});
-
-ipcMain.handle('close-profile', async (event, id) => {
-  if (isHeadless || !mainWindow) {
-    removeProfile(id);
-    return getProfiles();
-  }
-
-  const response = await dialog.showMessageBox(mainWindow, {
-    type: 'question',
-    buttons: ['Cancelar', 'Fechar Aba'],
-    defaultId: 1,
-    cancelId: 0,
-    title: 'Fechar Aba',
-    message: 'Fechar esta aba? A sessão permanecerá salva nesta partição.'
-  });
-  if (response.response === 1) {
-    removeProfile(id);
-  }
-  return getProfiles();
-});
-
-ipcMain.handle('navigate-profile', async (event, { id, url }) => {
-  const tabData = await ensureTab(id);
-  if (!tabData) return;
-  try {
-    await tabData.view.webContents.loadURL(url);
-    updateProfile(id, { lastUrl: url });
-  } catch (error) {
-    console.error('Failed navigation request for', id, error);
-    notifyRenderer('tab-error', {
-      id,
-      message: `Falha ao navegar: ${error.message}`
-    });
-  }
-});
-
-ipcMain.handle('clear-profile-session', async (event, id) => {
-  await clearProfileSession(id);
-  notifyRenderer('session-cleared', id);
-  return getProfiles();
-});
-
-ipcMain.handle('set-profile-user-agent', async (event, { id, userAgent }) => {
-  updateProfile(id, { userAgent });
-  if (tabs.has(id)) {
-    const { view } = tabs.get(id);
-    if (userAgent && userAgent.trim()) {
-      view.webContents.setUserAgent(userAgent.trim());
-    } else {
-      view.webContents.setUserAgent('');
-    }
-  }
-  return getProfiles();
-});
-
-ipcMain.handle('get-runtime-options', async () => {
-  return { headless: isHeadless };
-});
-
-ipcMain.handle('show-tab-context-menu', async (event, id) => {
-  const template = [
-    {
-      label: 'Apagar Sessão desta Aba',
-      click: () => {
-        clearProfileSession(id).then(() => {
-          notifyRenderer('session-cleared', id);
-        });
-      }
-    }
-  ];
-  if (isHeadless || !mainWindow) {
-    template[0].click();
-    return;
-  }
-  const menu = Menu.buildFromTemplate(template);
-  menu.popup({ window: mainWindow });
 });
