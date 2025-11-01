@@ -180,7 +180,10 @@ clearSessionBtn.addEventListener('click', async () => {
 
 closeTabBtn.addEventListener('click', async () => {
   if (!state.activeId) return;
-  await window.electronAPI.closeProfile(state.activeId);
+  const closed = await window.electronAPI.closeProfile(state.activeId);
+  if (closed) {
+    pushStatus('Aba fechada. A sessão permanece salva até que seja limpa.', 'info');
+  }
 });
 
 window.electronAPI.onProfilesUpdated((profiles) => {

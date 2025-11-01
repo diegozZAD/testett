@@ -18,13 +18,9 @@ npm start
 
 ### Rodando em modo headless
 
-Quando quiser reduzir ao máximo o uso de recursos, execute:
+Para ativar o modo headless sem usar o terminal, abra o menu **Modo → Ativar Modo Headless**. O aplicativo será reiniciado automaticamente com todas as janelas ocultas, mantendo os BrowserViews carregados em segundo plano e exibindo um aviso visual na interface (quando estiver visível).
 
-```bash
-npm run start:headless
-```
-
-Se preferir, você também pode executar `npm start -- --headless` ou definir `ELECTRON_HEADLESS=1` (ou `HEADLESS=1`) antes do `npm start`.
+Para voltar à interface normal basta usar **Modo → Desativar Modo Headless**. Também há um script auxiliar `npm run start:headless` e a flag `npm start -- --headless` caso queira iniciar direto nesse modo.
 
 Nesse modo nenhuma janela é exibida: a aplicação se mantém em segundo plano, o Chromium roda sem interface visível e o áudio é silenciado. As sessões continuam funcionando com as mesmas partitions persistentes — perfeito para manter várias contas logadas consumindo o mínimo possível. Configure ou edite as abas previamente (com a interface normal) e depois reinicie em headless para reaproveitar as mesmas sessões.
 
@@ -60,7 +56,7 @@ Nesse modo nenhuma janela é exibida: a aplicação se mantém em segundo plano,
 4. Use o campo **URL** para navegar para outro vídeo/canal/shorts.
 5. Para renomear a aba, edite o campo **Nome** e clique em **Salvar Nome**.
 6. Para limpar apenas a sessão dessa aba, use o botão **Apagar Sessão desta Aba** ou clique com o botão direito na aba e escolha a mesma opção.
-7. Para fechar a aba (mantendo a sessão no disco), clique em **Fechar Aba** e confirme no diálogo. Reabra criando uma nova aba com o mesmo ID se quiser reutilizar a sessão.
+7. Para fechar a aba (mantendo a sessão no disco), clique em **Fechar Aba** e confirme no diálogo. A sessão permanece armazenada na partition correspondente até que seja limpa manualmente.
 
 ## Localização do arquivo `profiles.json`
 
