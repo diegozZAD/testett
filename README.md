@@ -14,7 +14,7 @@ npm install
 npm start
 ```
 
-> Dica: para desabilitar a aceleração de hardware utilize `npm start -- --disable-gpu`. O código já possui o trecho comentado chamando `app.disableHardwareAcceleration()` antes do `app.whenReady()` para evitar o erro clássico.
+> Dica: a aceleração de hardware é desativada automaticamente quando o modo headless está ligado ou quando você executa `npm start -- --disable-gpu`, evitando os erros de GPU do Chromium.
 
 ### Rodando em modo headless
 

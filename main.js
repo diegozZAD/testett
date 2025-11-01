@@ -3,13 +3,13 @@ const path = require('path');
 const fs = require('fs');
 const { randomUUID } = require('crypto');
 
-// Exemplo: descomente o bloco abaixo para desabilitar a aceleração de hardware
-// antes do app ficar pronto. Útil ao iniciar com `npm start -- --disable-gpu`.
-// if (process.argv.includes('--disable-gpu')) {
-//   app.disableHardwareAcceleration();
-// }
-
 const HEADLESS_FLAG = '--headless';
+
+// Desativa a GPU automaticamente no modo headless (e quando a flag --disable-gpu
+// for usada manualmente). Precisa ser feito antes do app ficar pronto.
+if (process.argv.includes(HEADLESS_FLAG) || process.argv.includes('--disable-gpu')) {
+  app.disableHardwareAcceleration();
+}
 const DEFAULT_URL = 'https://www.youtube.com';
 const PROFILE_PREFIX = 'persist:perfil_';
 const LAYOUT_SCRIPT = `(() => {
