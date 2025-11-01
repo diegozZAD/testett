@@ -24,9 +24,9 @@ Quando quiser reduzir ao máximo o uso de recursos, execute:
 npm run start:headless
 ```
 
-Se preferir, você também pode executar `npm start -- --headless`.
+Se preferir, você também pode executar `npm start -- --headless` ou definir `ELECTRON_HEADLESS=1` (ou `HEADLESS=1`) antes do `npm start`.
 
-Nesse modo a janela principal fica oculta, o Chromium roda sem interface visível e o áudio é silenciado. As sessões continuam funcionando em segundo plano com as mesmas partitions persistentes — perfeito para manter várias contas logadas consumindo o mínimo possível.
+Nesse modo nenhuma janela é exibida: a aplicação se mantém em segundo plano, o Chromium roda sem interface visível e o áudio é silenciado. As sessões continuam funcionando com as mesmas partitions persistentes — perfeito para manter várias contas logadas consumindo o mínimo possível. Configure ou edite as abas previamente (com a interface normal) e depois reinicie em headless para reaproveitar as mesmas sessões.
 
 ## Como funciona
 
