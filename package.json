@@ -1,0 +1,14 @@
+{
+  "name": "electron-multi-youtube",
+  "version": "1.0.0",
+  "description": "Electron app for managing multiple isolated YouTube sessions.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "start:headless": "electron . --headless"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "electron": "^27.3.11"
+  }
+}

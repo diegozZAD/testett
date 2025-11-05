@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>YouTube Multi-Session</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="topbar">
+      <h1>YouTube Multi-Session</h1>
+    </div>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-controls">
+          <form id="newTabForm" autocomplete="off">
+            <label class="field">
+              <span>Nome da aba</span>
+              <input id="newTabName" type="text" placeholder="ex.: Canal Reviews" />
+            </label>
+            <label class="field">
+              <span>URL do YouTube</span>
+              <input id="newTabUrl" type="text" value="https://www.youtube.com" />
+            </label>
+            <button type="submit" class="primary">Nova Aba</button>
+          </form>
+        </div>
+        <div class="tabs-header">Perfis</div>
+        <ul id="tabList" class="tab-list"></ul>
+      </aside>
+      <div class="right-pane">
+        <section id="headlessNotice" class="notice hidden">
+          Executando em modo headless. A janela principal permanece oculta para reduzir o uso de recursos, mas as sessões continuam ativas em segundo plano.
+        </section>
+        <main class="content">
+          <section id="tabControls" class="controls hidden">
+            <div class="control-row">
+              <label for="tabNameInput">Nome</label>
+              <input id="tabNameInput" type="text" />
+              <button id="saveNameBtn" class="secondary">Salvar Nome</button>
+            </div>
+            <div class="control-row">
+              <label for="tabUrlInput">URL</label>
+              <input id="tabUrlInput" type="text" placeholder="https://www.youtube.com" />
+              <button id="navigateBtn" class="primary">Ir</button>
+            </div>
+            <div class="control-row">
+              <label for="userAgentInput">User-Agent (opcional)</label>
+              <input id="userAgentInput" type="text" placeholder="Padrão do Electron" />
+              <button id="saveUserAgentBtn" class="secondary">Aplicar</button>
+            </div>
+            <div class="control-row actions">
+              <button id="clearSessionBtn" class="warning">Apagar Sessão desta Aba</button>
+              <button id="closeTabBtn" class="danger">Fechar Aba</button>
+            </div>
+          </section>
+          <section id="emptyState" class="empty-state">
+            <p>Crie uma aba na barra lateral para começar. Cada aba possui sua própria sessão persistente.</p>
+          </section>
+          <section id="statusArea" class="status-area"></section>
+        </main>
+        <div class="browser-placeholder"></div>
+      </div>
+    </div>
+    <script src="renderer.js"></script>
+  </body>
+</html>
